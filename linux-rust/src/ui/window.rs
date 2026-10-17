@@ -87,6 +87,7 @@ pub struct App {
     hires_mic_agc: bool,
     hires_mic_pause_convo: bool,
     a2dp_reset: bool,
+    start_minimized: bool,
 }
 
 pub struct BluetoothState {
@@ -123,6 +124,7 @@ pub enum Message {
     HiResMicAgcChanged(bool),
     HiResMicPauseConvoChanged(bool),
     MicLevelTick,
+    StartMinimizedChanged(bool),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -151,6 +153,7 @@ impl App {
 
         let wait_task = Task::perform(wait_for_message(Arc::clone(&ui_rx)), |msg| msg);
 
+        println!("{:?}", start_minimized);
         let (window, open_task) = if start_minimized {
             (None, Task::none())
         } else {
@@ -169,6 +172,13 @@ impl App {
         let hires_mic_agc = app_settings.hires_mic_agc;
         let hires_mic_pause_convo = app_settings.hires_mic_pause_convo;
         let a2dp_reset = app_settings.a2dp_reset;
+        let start_minimized = app_settings.start_minimized;
+
+        let start_minimized = settings
+            .clone()
+            .and_then(|v| v.get("start_minimized").cloned())
+            .and_then(|sm| serde_json::from_value(sm).ok())
+            .unwrap_or(false);
 
         let bluetooth_state = BluetoothState::new();
 
@@ -224,6 +234,7 @@ impl App {
                 hires_mic_agc,
                 hires_mic_pause_convo,
                 a2dp_reset,
+                start_minimized,
             },
             Task::batch(vec![open_task, wait_task]),
         )
@@ -667,6 +678,11 @@ impl App {
                 self.save_settings();
                 Task::none()
             }
+            Message::StartMinimizedChanged(is_enabled) => {
+                self.start_minimized = is_enabled;
+                self.save_settings();
+                Task::none()
+            }
         }
     }
 
@@ -979,6 +995,46 @@ impl App {
                                         )
                                     .align_y(Center);
 
+                            let start_minimized_toggle = container(
+                                row![
+                                    column![
+                                        text("Start minimized").size(16),
+                                        text("Start the app minimized to the tray.").size(12).style(
+                                            |theme: &Theme| {
+                                                let mut style = text::Style::default();
+                                                style.color = Some(theme.palette().text.scale_alpha(0.7));
+                                                style
+                                            }
+                                        ).width(Length::Fill)
+                                    ].width(Length::Fill),
+                                    toggler(self.start_minimized)
+                                        .on_toggle(move |is_enabled| {
+                                            Message::StartMinimizedChanged(is_enabled)
+                                        })
+                                    .spacing(0)
+                                    .size(20)
+                                    ]
+                                        .align_y(Center)
+                                        .spacing(12)
+                                    )
+                                        .padding(Padding{
+                                            top: 5.0,
+                                            bottom: 5.0,
+                                            left: 18.0,
+                                            right: 18.0,
+                                        })
+                                        .style(
+                                            |theme: &Theme| {
+                                                let mut style = container::Style::default();
+                                                style.background = Some(Background::Color(theme.palette().primary.scale_alpha(0.1)));
+                                                let mut border = Border::default();
+                                                border.color = theme.palette().primary.scale_alpha(0.5);
+                                                style.border = border.rounded(16);
+                                                style
+                                            }
+                                        )
+                                    .align_y(Center);
+
                             let appearance_settings_col = column![
                                 container(
                                     text("Appearance").size(20).style(
@@ -1256,6 +1312,8 @@ impl App {
                                     appearance_settings_col,
                                     Space::new().height(Length::from(20)),
                                     tray_text_mode_toggle,
+                                    Space::new().height(Length::from(20)),
+                                    start_minimized_toggle,
                                     Space::new().height(Length::from(20)),
                                     controls_settings_col,
                                     Space::new().height(Length::from(20)),
