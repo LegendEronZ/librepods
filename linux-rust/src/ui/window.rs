@@ -173,13 +173,6 @@ impl App {
         let hires_mic_pause_convo = app_settings.hires_mic_pause_convo;
         let a2dp_reset = app_settings.a2dp_reset;
         let start_minimized = app_settings.start_minimized;
-
-        let start_minimized = settings
-            .clone()
-            .and_then(|v| v.get("start_minimized").cloned())
-            .and_then(|sm| serde_json::from_value(sm).ok())
-            .unwrap_or(false);
-
         let bluetooth_state = BluetoothState::new();
 
         // let dummy_device_state = DeviceState::AirPods(AirPodsState {
@@ -249,6 +242,7 @@ impl App {
             hires_mic_agc: self.hires_mic_agc,
             hires_mic_pause_convo: self.hires_mic_pause_convo,
             a2dp_reset: self.a2dp_reset,
+            start_minimized: self.start_minimized,
         }
         .save();
     }

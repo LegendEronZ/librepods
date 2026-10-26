@@ -172,6 +172,7 @@ pub struct AppSettings {
     pub hires_mic_agc: bool,
     pub hires_mic_pause_convo: bool,
     pub a2dp_reset: bool,
+    pub start_minimized: bool,
 }
 
 impl Default for AppSettings {
@@ -184,6 +185,7 @@ impl Default for AppSettings {
             hires_mic_agc: true,
             hires_mic_pause_convo: true,
             a2dp_reset: true,
+            start_minimized: true,
         }
     }
 }
