@@ -67,7 +67,7 @@ impl MediaControllerState {
             old_in_ear_data: vec![false, false],
             user_played_the_media: false,
             i_paused_the_media: false,
-            ear_detection_enabled: false,
+            ear_detection_enabled: true,
             disconnect_when_not_wearing: true,
             conv_original_volume: None,
             conv_conversation_started: false,
@@ -385,8 +385,11 @@ impl MediaController {
 
             for service in Self::list_mpris_services(&conn) {
                 debug!("Checking playback status for service: {}", service);
-                let proxy =
-                    conn.with_proxy(&service, "/org/mpris/MediaPlayer2", Duration::from_secs(5));
+                let proxy = conn.with_proxy(
+                    &service,
+                    "/org/mpris/MediaPlayer2",
+                    Duration::from_secs(5),
+                );
 
                 if let Ok(playback_status) =
                     proxy.get::<String>("org.mpris.MediaPlayer2.Player", "PlaybackStatus")
@@ -410,8 +413,8 @@ impl MediaController {
 
             paused_services
         })
-        .await
-        .unwrap();
+            .await
+            .unwrap();
 
         if !paused_services.is_empty() {
             info!("Paused {} media player(s) via DBus", paused_services.len());
@@ -457,14 +460,11 @@ impl MediaController {
             }
             paused_count
         })
-        .await
-        .unwrap();
+            .await
+            .unwrap();
 
         if paused_count > 0 {
-            info!(
-                "Paused {} media player(s) due to ownership loss",
-                paused_count
-            );
+            info!("Paused {} media player(s) due to ownership loss", paused_count);
             self.state.lock().await.is_playing = false;
         } else {
             debug!("No playing media players found to pause");
@@ -501,8 +501,8 @@ impl MediaController {
             }
             resumed_count
         })
-        .await
-        .unwrap();
+            .await
+            .unwrap();
 
         if resumed_count > 0 {
             info!("Resumed {} media player(s) via DBus", resumed_count);
@@ -544,8 +544,8 @@ impl MediaController {
             debug!("A2DP profile available: {}", available);
             available
         })
-        .await
-        .unwrap_or(false)
+            .await
+            .unwrap_or(false)
     }
 
     async fn get_preferred_a2dp_profile(&self) -> String {
@@ -590,8 +590,8 @@ impl MediaController {
             debug!("Profile {} available: {}", profile_name, available);
             available
         })
-        .await
-        .unwrap_or(false)
+            .await
+            .unwrap_or(false)
     }
 
     async fn restart_wire_plumber(&self) -> bool {
@@ -624,21 +624,15 @@ impl MediaController {
                 if let Some(device_string) = card.proplist.get_str("device.string")
                     && device_string.contains(&mac_clone)
                 {
-                    info!(
-                        "Found audio device index for MAC {}: {}",
-                        mac_clone, card.index
-                    );
+                    info!("Found audio device index for MAC {}: {}", mac_clone, card.index);
                     return Some(card.index);
                 }
             }
-            error!(
-                "No matching Bluetooth card found for MAC address: {}",
-                mac_clone
-            );
+            error!("No matching Bluetooth card found for MAC address: {}", mac_clone);
             None
         })
-        .await
-        .unwrap_or(None)
+            .await
+            .unwrap_or(None)
     }
 
     pub async fn deactivate_a2dp_profile(&self) {
@@ -664,13 +658,13 @@ impl MediaController {
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 set_card_profile_sync(device_index, "off")
             }))
-            .unwrap_or_else(|e| {
-                warn!("Panic in set_card_profile_sync: {:?}", e);
-                false
-            })
+                .unwrap_or_else(|e| {
+                    warn!("Panic in set_card_profile_sync: {:?}", e);
+                    false
+                })
         })
-        .await
-        .unwrap_or(false);
+            .await
+            .unwrap_or(false);
 
         if success {
             info!("Successfully deactivated A2DP profile");
@@ -680,10 +674,7 @@ impl MediaController {
     }
 
     pub async fn handle_conversational_awareness(&self, status: u8) {
-        debug!(
-            "Entering handle_conversational_awareness with status: {}",
-            status
-        );
+        debug!("Entering handle_conversational_awareness with status: {}", status);
 
         let mac = self.state.lock().await.connected_device_mac.clone();
         if mac.is_empty() {
@@ -706,8 +697,8 @@ impl MediaController {
             let sink = sink.clone();
             move || get_sink_volume_percent_by_name_sync(&sink)
         })
-        .await
-        .unwrap_or(None);
+            .await
+            .unwrap_or(None);
 
         match status {
             1 => {
@@ -746,8 +737,8 @@ impl MediaController {
                         tokio::task::spawn_blocking(move || {
                             transition_sink_volume(&sink_clone, 15)
                         })
-                        .await
-                        .unwrap_or(false);
+                            .await
+                            .unwrap_or(false);
                         info!(
                             "Conversation reduce: lowered volume to 15% (original {})",
                             orig
@@ -771,11 +762,9 @@ impl MediaController {
                 if let Some(orig) = conv_original {
                     let target = orig.min(25);
                     let sink_clone = sink.clone();
-                    tokio::task::spawn_blocking(move || {
-                        transition_sink_volume(&sink_clone, target)
-                    })
-                    .await
-                    .unwrap_or(false);
+                    tokio::task::spawn_blocking(move || transition_sink_volume(&sink_clone, target))
+                        .await
+                        .unwrap_or(false);
                     info!(
                         "Conversation partial increase (3): set volume to {} (original {})",
                         target, orig
@@ -783,11 +772,9 @@ impl MediaController {
                 } else if let Some(orig_from_current) = current_volume_opt {
                     let target = orig_from_current.min(25);
                     let sink_clone = sink.clone();
-                    tokio::task::spawn_blocking(move || {
-                        transition_sink_volume(&sink_clone, target)
-                    })
-                    .await
-                    .unwrap_or(false);
+                    tokio::task::spawn_blocking(move || transition_sink_volume(&sink_clone, target))
+                        .await
+                        .unwrap_or(false);
                     info!(
                         "Conversation partial increase (3) with fallback current: set volume to {} (measured {})",
                         target, orig_from_current
@@ -836,7 +823,11 @@ impl MediaController {
                 let proxy =
                     conn.with_proxy(service, "/org/mpris/MediaPlayer2", Duration::from_secs(5));
                 if proxy
-                    .method_call::<(), _, &str, &str>("org.mpris.MediaPlayer2.Player", command, ())
+                    .method_call::<(), _, &str, &str>(
+                        "org.mpris.MediaPlayer2.Player",
+                        command,
+                        (),
+                    )
                     .is_ok()
                 {
                     info!("Sent {} to: {}", command, service);
@@ -845,8 +836,8 @@ impl MediaController {
                 }
             }
         })
-        .await
-        .unwrap();
+            .await
+            .unwrap();
     }
 
     async fn restore_volume_if_needed(&self, sink: &str) {
@@ -885,7 +876,9 @@ impl MediaController {
 
         names
             .into_iter()
-            .filter(|s| s.starts_with("org.mpris.MediaPlayer2.") && !Self::is_kdeconnect_service(s))
+            .filter(|s| {
+                s.starts_with("org.mpris.MediaPlayer2.") && !Self::is_kdeconnect_service(s)
+            })
             .collect()
     }
 }
@@ -895,9 +888,7 @@ impl MediaController {
 fn pulse_connect() -> Option<(Mainloop, Context)> {
     let mut mainloop = Mainloop::new()?;
     let mut context = Context::new(&mainloop, "LibrePods")?;
-    context
-        .connect(None, ContextFlagSet::NOAUTOSPAWN, None)
-        .ok()?;
+    context.connect(None, ContextFlagSet::NOAUTOSPAWN, None).ok()?;
     loop {
         mainloop.iterate(false);
         match context.get_state() {
@@ -1062,9 +1053,7 @@ async fn get_sink_name_by_mac(mac: &str) -> Option<String> {
 
         for sink in sink_list.borrow().iter() {
             if let Some(device_string) = sink.proplist.get_str("device.string")
-                && device_string
-                    .to_uppercase()
-                    .contains(&mac_clone.to_uppercase())
+                && device_string.to_uppercase().contains(&mac_clone.to_uppercase())
                 && let Some(name) = &sink.name
             {
                 info!("Found sink name for MAC {}: {}", mac_clone, name);
@@ -1088,6 +1077,6 @@ async fn get_sink_name_by_mac(mac: &str) -> Option<String> {
         error!("No matching sink found for MAC address: {}", mac_clone);
         None
     })
-    .await
-    .unwrap_or(None)
+        .await
+        .unwrap_or(None)
 }

@@ -99,22 +99,7 @@ fn main() -> iced::Result {
                 .unwrap();
         });
 
-        let app_settings_path = get_app_settings_path();
-        let settings = std::fs::read_to_string(&app_settings_path)
-            .ok()
-            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok());
-        
-        let mut start_minimized = settings
-            .clone()
-            .and_then(|v| v.get("start_minimized").cloned())
-            .and_then(|sm| serde_json::from_value(sm).ok())
-            .unwrap_or(false);
-
-        if args.start_minimized{
-            start_minimized = true
-        }
-
-        ui::window::start_ui(ui_rx, start_minimized, device_managers)
+        ui::window::start_ui(ui_rx, args.start_minimized, device_managers)
     }
 }
 
